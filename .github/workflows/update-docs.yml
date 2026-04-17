@@ -1,0 +1,50 @@
+name: Atualizar documentação
+
+on:
+  push:
+    paths:
+      - '*.bubble'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Gerar documentação
+        run: |
+          BUBBLE_FILE=$(ls *.bubble 2>/dev/null | head -n 1)
+          if [ -z "$BUBBLE_FILE" ]; then
+            cp index.html _site_index.html
+          else
+            python3 generate_docs.py "$BUBBLE_FILE" index.html
+          fi
+
+      - name: Preparar artifact
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+
+      - name: Upload para Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
